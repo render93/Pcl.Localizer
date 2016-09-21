@@ -48,6 +48,7 @@
     <Compile Include="Exceptions\ParameterEmptyException.cs" />
     <Compile Include="Exceptions\ParameterMissingException.cs" />
     <Compile Include="ParameterExtractor.cs" />
+    <Compile Include="ResourceContainer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

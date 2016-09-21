@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -52,68 +53,49 @@ namespace PclLocalizer.Console.Worker
             //Add namespace
             magic = magic.Replace(Constants.NamespacePlaceHolder, nameSpace);
 
-            //Check file
-            var lines = File.ReadAllLines(input);
-            var firstLine = lines[0].Split(new[] { separator }, StringSplitOptions.None).ToList();
-            var languages = new List<string>();
+            var resourceContainerList = input.Select(item => new ResourceContainer(item, separator)).ToList();
 
-            for (int i = 1; i < firstLine.Count; i++)
-            {
-                languages.Add(firstLine[i]);
-                System.Console.WriteLine($"Language {firstLine[i]} found.");
-            }
+            //check files
+            if (!this._checker.CheckListInputFile(resourceContainerList)) return;
 
-            //Create Dictionary
+            //create dictionary
             var dictionarySection = new StringBuilder();
             var dictionaryCounter = 0;
-            foreach (var language in languages)
+            foreach (var resource in resourceContainerList)
             {
                 dictionaryCounter++;
                 var varname = $"d{dictionaryCounter}";
-
+                System.Console.WriteLine($"Language {resource.Culture} found.");
                 dictionarySection.Append($"\t\t\tvar {varname} = new Dictionary<string, string> {{");
-                
-                var langIndex = firstLine.IndexOf(language);
-                for (int index = 0; index < lines.Length; index++)
+
+                foreach (var res in resource.Resource)
                 {
-                    if(index == 0)continue;
-                    var splitted = lines[index].Split(new[] { separator }, StringSplitOptions.None);
-
-                    //Key Key
-                    var keyOriginal = splitted[0];
-                    var key = Regex.Replace(keyOriginal, @"\s+", ""); //trim
-
-                    var value = splitted[langIndex];
-
-                    dictionarySection.Append($"{{\"{key}\",\"{value}\"}},");
+                    var key = Regex.Replace(res.Key, @"\s+", ""); //trim
+                    dictionarySection.Append($"{{\"{key}\",\"{res.Value}\"}},");
                 }
+
                 dictionarySection.Remove(dictionarySection.Length - 1, 1);
                 dictionarySection.Append($"}};{Environment.NewLine}");
-                dictionarySection.Append($"\t\t\tValues.Add(\"{language}\", {varname});{Environment.NewLine}");
+                dictionarySection.Append($"\t\t\tValues.Add(\"{resource.Culture}\", {varname});{Environment.NewLine}");
             }
-
             magic = magic.Replace(Constants.DictionariesPlaceHolder, dictionarySection.ToString());
+            //end
 
-            //Properties
             var propertiesSection = new StringBuilder();
+            var defaultCulture = resourceContainerList.First();
 
-            for (int index = 0; index < lines.Length; index++)
+            foreach (var res in defaultCulture.Resource)
             {
-                if (index == 0) continue;
-                var splitted = lines[index].Split(new[] { separator }, StringSplitOptions.None);
-
-                //Key Key
-                var keyOriginal = splitted[0];
-                var key = Regex.Replace(keyOriginal, @"\s+", ""); //trim
-
+                var key = Regex.Replace(res.Key, @"\s+", ""); //trim
                 propertiesSection.AppendLine($"\t\tpublic static string {key} => GetValue(\"{key}\");");
             }
 
             magic = magic.Replace(Constants.PropertiesPlaceHolder, propertiesSection.ToString());
 
-            File.WriteAllText(destination,magic);
+            File.WriteAllText(destination, magic);
 
             System.Console.WriteLine("All done!");
+
         }
 
         private void RunHelp()

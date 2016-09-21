@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using PclLocalizer.Console.Exceptions;
 
 namespace PclLocalizer.Console
@@ -58,7 +59,8 @@ namespace PclLocalizer.Console
                 var index = this._arguments.IndexOf(Constants.InputParam);
                 if (index >= this._arguments.Count - 1) return false;
 
-                return File.Exists(this._arguments[index + 1]);
+                var listFile = this._arguments[index + 1].Split(' ');
+                return listFile.All(File.Exists);
             }
         }
 
@@ -134,5 +136,45 @@ namespace PclLocalizer.Console
             }
         }
 
+        public bool CheckListInputFile(List<ResourceContainer> fileList)
+        {
+            if (fileList.Count <= 1) return true;
+
+            for (var i = 1; i < fileList.Count; i++)
+            {
+                //verifico che i due dictionary abbiano lo stesso numero di elementi
+                if (fileList[0].Resource.Count != fileList[i].Resource.Count)
+                {
+                    System.Console.WriteLine("CSV files has different number of rows.");
+                    return false;
+                }
+            }
+
+            //verifico che ogni oggetto abbia la culture differente
+            var allCulture = fileList.Select(x => x.Culture).ToList();
+            if (allCulture.GroupBy(x => x).Any(g => g.Count() > 1))
+            {
+                System.Console.WriteLine("Two or more csv file contains the same culture.");
+                return false;
+            }
+
+            //ordino le key di ogni dictionary in ordine crescente
+            fileList.ForEach(
+                f => f.Resource = f.Resource.OrderBy(o => o.Key).ToDictionary(pair => pair.Key, pair => pair.Value));
+
+            //verifico che tutti i file contengano le stesse chiavi
+            var defaultKeyList = fileList[0].Resource.Select(x => x.Key).ToList();
+            for (var i = 1; i < fileList.Count; i++)
+            {
+                var keyList = fileList[i].Resource.Select(x => x.Key).ToList();
+                if (!keyList.SequenceEqual(defaultKeyList))
+                {
+                    System.Console.WriteLine("CSV files not contains same key.");
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }
